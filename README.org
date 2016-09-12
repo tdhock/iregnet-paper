@@ -1,0 +1,12 @@
+** TODOs
+
+- Table for equations for the different distributions.
+- Figures for timings.
+- Figures for accuracy in terms of optimality criteria.
+- Figures for accuracy in terms of test error.
+
+** 12 Sept 2016
+
+Typed Cost and loss functions.
+
+
