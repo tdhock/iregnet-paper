@@ -1,0 +1,218 @@
+\documentclass[article]{jss}
+
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{tikz}
+\usepackage{amssymb,amsmath}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\sign}{sign}
+\DeclareMathOperator*{\Lik}{Lik}
+\DeclareMathOperator*{\Peaks}{Peaks}
+\newcommand{\Cost}{\text{Cost}}
+%\DeclareMathOperator*{\Cost}{Cost}
+\DeclareMathOperator*{\Diag}{Diag}
+\DeclareMathOperator*{\TPR}{TPR}
+\DeclareMathOperator*{\Segments}{Segments}
+\DeclareMathOperator*{\FPR}{FPR}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\maximize}{maximize} 
+\DeclareMathOperator*{\minimize}{minimize}
+\newcommand{\ZZ}{\mathbb Z}
+\newcommand{\NN}{\mathbb N}
+\newcommand{\RR}{\mathbb R}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% declarations for jss.cls %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% almost as usual
+\author{Anuj Khare\\TODO \And
+        Toby Dylan Hocking\\McGill University}
+\title{Regularization Paths for Interval Regression Models via Coordinate Descent}
+
+%% for pretty printing and a nice hypersummary also set:
+\Plainauthor{Anuj Khare, Toby Dylan Hocking} %% comma-separated
+\Plaintitle{Regularization Paths for Interval Regression Models via Coordinate Descent} %% without formatting
+\Shorttitle{Regularization Paths for Interval Regression Models via Coordinate Descent} %% a short title (if necessary)
+
+%% an abstract and keywords
+\Abstract{
+  We describe a coordinate descent algorithm for estimating interval 
+  regression models with elastic net penalties. The output data we consider
+  are of four possible censoring types: left, right, interval, and none. 
+  The models we consider are Gaussian, Logistic, TODO. We evaluate the speed
+  and accuracy of the coordinate descent method on several real data sets,
+  including survival prediction and and penalty learning problems.
+}
+\Keywords{keywords, comma-separated, not capitalized, \proglang{Java}}
+\Plainkeywords{keywords, comma-separated, not capitalized, Java} %% without formatting
+%% at least one keyword must be supplied
+
+%% publication information
+%% NOTE: Typically, this can be left commented and will be filled out by the technical editor
+%% \Volume{50}
+%% \Issue{9}
+%% \Month{June}
+%% \Year{2012}
+%% \Submitdate{2012-06-04}
+%% \Acceptdate{2012-06-04}
+
+%% The address of (at least) one author should be given
+%% in the following format:
+\Address{
+  Achim Zeileis\\
+  Department of Statistics and Mathematics\\
+  Faculty of Economics and Statistics\\
+  Universit\"at Innsbruck\\
+  6020 Innsbruck, Austria\\
+  E-mail: \email{Achim.Zeileis@uibk.ac.at}\\
+  URL: \url{http://eeecon.uibk.ac.at/~zeileis/}
+}
+%% It is also possible to add a telephone and fax number
+%% before the e-mail in the following format:
+%% Telephone: +43/512/507-7103
+%% Fax: +43/512/507-2851
+
+%% for those who use Sweave please include the following line (with % symbols):
+%% need no \usepackage{Sweave.sty}
+
+%% end of declarations %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{document}
+
+%% include your article here, just as usual
+%% Note that you should use the \pkg{}, \proglang{} and \code{} commands.
+
+%\section[About Java]{About \proglang{Java}}
+\section{Introduction}
+%% Note: If there is markup in \(sub)section, then it has to be escape as above.
+
+There has been a recent interest in Accelerated Failure Time models
+\citep{huang05, cai09, khan13}.
+
+The coordinate descent algorithm has been used for elastic net
+regularized generalized linear models \citep{glmnet}, including Cox's
+proportional hazards model \citep{coxnet}.
+
+\section{Model}
+
+In interval regression problems we are given $n$ observations. For
+each observation $i\in\{1, \dots, n\}$, we have a $p$-dimensional
+input feature vector $\mathbf x_i \in \RR^p$. The output data are
+lower $\underline y_i\in\{-\infty, \RR\}$ and upper
+$\overline y_i\in\{\RR,\infty\}$ limits which verify
+$\underline y_i \leq \overline y_i$.
+
+For example, usual linear regression is a special case where
+$\underline y_i = \overline y_i\in\RR$ for all observations
+$i\in\{1, \dots, n\}$. In this case we say that none of the
+observations are censored.
+
+Another example is survival data, where each observation $i$
+corresponds to a patient who is administered a treatment in a
+study. The model predicts the amount of time that a patient survives
+after treatment, and there are two types of observed output data:
+\begin{itemize}
+\item Patient $i$ died before the end of the study, at time $t_i>0$
+  after treatment. This implies a log survival time of
+  $\underline y_i= \overline y_i = \log t_i$. There is no censoring
+  for this observation.
+\item Patient $i$ was alive at the end of the study, and the time
+  between treatment and the end of the study is $t_i$. This implies
+  the patient's log survival time is somewhere in the interval
+  $(\underline y_i, \overline y_i) = (\log t_i, \infty)$. This
+  observation is right censored.
+\end{itemize}
+
+A final example is penalty learning, where the model predicts a
+positive penalty constant that is used to select the number of
+change-points in segmentation models \citep{HOCKING-penalties}. The
+output data are intervals $(\underline y_i, \overline y_i)$ which are
+either finite or infinite, but for these data we never have
+$\underline y_i = \overline y_i$. In terms of the survival literature,
+we say that all of the observations are either left, right, or
+interval censored.
+
+\subsection{The concave maximum likelihood problem}
+
+The predicted output is $\beta + \mathbf w^\intercal \mathbf x_i$,
+where $\beta\in\RR$ is the bias/intercept, and $w\in\RR^p$ is a weight
+vector.
+
+TODO discuss likelihood in terms of the scale $\sigma>0$ and log-scale
+$s=\log \sigma\in\RR$.
+
+\subsection{The convex minimization problem}
+
+The regularized model can be written as the following minimization
+problem. 
+\begin{equation}
+  \label{eq:min_cost}
+  \minimize_{
+    \mathbf w,
+    \beta,
+    s
+  }
+  \Cost_{\alpha,\lambda}(\mathbf w, \beta, s).
+\end{equation}
+The Cost function has two regularization hyper-parameters,
+$\lambda\geq 0$ and $\alpha\in[0,1]$, which must be fixed before
+solving for the optimization variables $\mathbf w, \beta, s$. The Cost
+function is composed of a smooth convex loss $\mathcal L$ and a convex
+penalty $P_\alpha$.
+\begin{equation}
+  \label{eq:Cost_loss_pen}
+  \Cost_{\alpha,\lambda}(\mathbf w, \beta, s) =
+  \mathcal L(\mathbf w, \beta, s) +
+  \lambda P_\alpha(\mathbf w).
+\end{equation}
+The penalty
+$P_\alpha(\mathbf w)=\alpha||\mathbf w||_1 + (1-\alpha)||\mathbf
+w||_2^2/2$ is the elastic net, and the average loss $\mathcal L$ is defined as
+\begin{equation}
+  \label{eq:Loss}
+  \mathcal L(\mathbf w, \beta, s) = 
+  \frac 1 n \sum_{i=1}^n \ell(
+  \underline y_i, 
+  \overline y_i,
+  s,
+  \beta + \mathbf w^\intercal \mathbf x_i).
+\end{equation}
+The observation-specific loss $\ell$ is defined as
+\begin{equation}
+  \label{eq:ell}
+\ell(
+  \underline y, 
+  \overline y,
+  s,
+  \eta
+)=
+\begin{cases}
+  s-\log f\left(\frac{\underline y - \eta}{e^s}\right) &
+  \text{ if } \underline y = \overline y\\
+  \log\left[
+    F\left(\frac{\underline y-\eta}{e^s}\right)-
+    F\left(\frac{\overline y-\eta}{e^s}\right)
+  \right] & \text{ otherwise.}
+\end{cases}
+\end{equation}
+The density $f$ and cumulative distribution function $F$ depend on the
+choice of the distribution (normal, logistic, etc). TODO table with
+precise equations for $f$ and $F$ for the models we have implemented.
+
+\section{Algorithm}
+
+We adapt the gradient computations of \citet{survival-manual}. TODO
+
+\section{Results}
+
+We use the code to learn penalty functions that predict the number of
+change-points in segmentation models \citep{HOCKING-penalties,
+  PeakSeg}. These problems are relatively small in terms of number of
+observations $n$ and features $p$.
+
+TODO: is there a really big (in terms of observations or features)
+survival data set we could apply our code to?
+
+\bibliography{refs}
+
+\end{document}
