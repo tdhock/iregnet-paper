@@ -150,19 +150,19 @@ problem.
   \minimize_{
     \mathbf w,
     \beta,
-    s
+    \sigma
   }
-  \Cost_{\alpha,\lambda}(\mathbf w, \beta, s).
+  \Cost_{\alpha,\lambda}(\mathbf w, \beta, \sigma).
 \end{equation}
 The Cost function has two regularization hyper-parameters,
 $\lambda\geq 0$ and $\alpha\in[0,1]$, which must be fixed before
-solving for the optimization variables $\mathbf w, \beta, s$. The Cost
+solving for the optimization variables $\mathbf w, \beta, \sigma$. The Cost
 function is composed of a smooth convex loss $\mathcal L$ and a convex
 penalty $P_\alpha$.
 \begin{equation}
   \label{eq:Cost_loss_pen}
-  \Cost_{\alpha,\lambda}(\mathbf w, \beta, s) =
-  \mathcal L(\mathbf w, \beta, s) +
+  \Cost_{\alpha,\lambda}(\mathbf w, \beta, \sigma) =
+  \mathcal L(\mathbf w, \beta, \sigma) +
   \lambda P_\alpha(\mathbf w).
 \end{equation}
 The penalty
@@ -170,11 +170,11 @@ $P_\alpha(\mathbf w)=\alpha||\mathbf w||_1 + (1-\alpha)||\mathbf
 w||_2^2/2$ is the elastic net, and the average loss $\mathcal L$ is defined as
 \begin{equation}
   \label{eq:Loss}
-  \mathcal L(\mathbf w, \beta, s) = 
+  \mathcal L(\mathbf w, \beta, \sigma) = 
   \frac 1 n \sum_{i=1}^n \ell(
   \underline y_i, 
   \overline y_i,
-  s,
+  \sigma,
   \beta + \mathbf w^\intercal \mathbf x_i).
 \end{equation}
 The observation-specific loss $\ell$ is defined as
@@ -183,25 +183,45 @@ The observation-specific loss $\ell$ is defined as
 \ell(
   \underline y, 
   \overline y,
-  s,
-  \eta
+  \sigma,
+  \mu
 )=
 \begin{cases}
-  s-\log f\left(\frac{\underline y - \eta}{e^s}\right) &
+  %s
+  -\log f_{\mu,\sigma}(\underline y) &
   \text{ if } \underline y = \overline y\\
   \log\left[
-    F\left(\frac{\underline y-\eta}{e^s}\right)-
-    F\left(\frac{\overline y-\eta}{e^s}\right)
+    F_{\mu,\sigma}(\underline y)-
+    F_{\mu,\sigma}(\overline y)
   \right] & \text{ otherwise.}
 \end{cases}
 \end{equation}
-The density $f$ and cumulative distribution function $F$ depend on the
-choice of the distribution (normal, logistic, etc). TODO table with
-precise equations for $f$ and $F$ for the models we have implemented.
+The density $f_{\mu,\sigma}$ and cumulative distribution function $F_{\mu,\sigma}$ depend on the
+choice of the distribution (Table~\ref{tab:distributions}).
+
+\begin{table}[h]
+  \centering
+  \begin{tabular}{ccc}
+    Distribution & $f_{\mu, \sigma}(y)$ & $F_{\mu, \sigma}(y)$ \\
+    \hline
+    Logistic & $\sigma^{-1} e^{(y-\mu)/\sigma} \left(1+e^{(y-\mu)/\sigma}\right)^{-2}$ &
+$\left(1+e^{(\mu-y)/\sigma}\right)^{-1}$ \\
+    Normal & $\sigma^{-1}(2\pi)^{-1/2} e^{-0.5(y-\mu)^2/\sigma^2}$ & Numerically evaluated.\\
+  \end{tabular}
+  \caption{Density and distribution functions, note that $F_{\mu,\sigma}$ is 
+    evaluated in terms of \texttt{erf} and \texttt{erfc} functions 
+    from math.h in the C library.}
+  \label{tab:distributions}
+\end{table}
 
 \section{Algorithm}
 
-We adapt the gradient computations of \citet{survival-manual}. TODO
+We use cyclic coordinate descent, and we use the same gradient
+computations as \citet[sections
+6.7--6.9]{survival-manual}\footnote{\url{http://cbio.ensmp.fr/~thocking/survival.pdf}}.
+
+\textbf{Question:} can we derive a computationally efficient stopping
+rule based on the Fenchel duality gap?
 
 \section{Results}
 
